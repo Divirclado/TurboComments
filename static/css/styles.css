@@ -1,0 +1,230 @@
+/* Estilo del video de fondo */
+#background-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Asegura que el video siempre cubra el fondo */
+    z-index: -1; /* Envía el video detrás del contenido */
+    opacity: 0.7; /* Ajusta la transparencia si lo deseas */
+}
+
+/* Estilo del cuerpo para complementar el fondo */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+}
+
+/* Contenedor principal */
+main {
+    position: relative;
+    z-index: 1; /* Asegura que el contenido quede encima del video */
+    background-color: rgba(255, 255, 255, 0.9); /* Fondo semitransparente para mayor contraste */
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Centra todo el contenido dentro del main */
+}
+
+/* Botón de cerrar sesión */
+.logout-button {
+    background-color: #ff9800; /* Color naranja */
+    border: none;
+    border-radius: 25px; /* Bordes redondeados */
+    color: white;
+    padding: 10px 20px; /* Espaciado interno */
+    font-size: 16px; /* Tamaño del texto */
+    text-align: center; /* Centrado del texto */
+    display: inline-block; /* Mantiene el botón completo */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+    background-color: #e65100; /* Naranja más oscuro en hover */
+    transform: scale(1.1);
+}
+
+/* Contenedor de comentarios */
+.comment-box {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin: 15px;
+    transition: transform 0.3s ease;
+}
+
+.comment-box:hover {
+    transform: translateY(-5px);
+}
+
+/* Botones estilizados */
+.styled-button {
+    background-color: #ff9800; /* Color naranja */
+    border: none;
+    border-radius: 25px;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.styled-button:hover {
+    background-color: #e65100; /* Naranja más oscuro al pasar el cursor */
+    transform: scale(1.1);
+}
+
+/* Iconos dentro de los botones */
+.styled-button i {
+    color: white; /* Asegura que los iconos combinen con el texto del botón */
+    margin-right: 8px;
+}
+
+/* Títulos */
+h1, h2 {
+    text-align: center;
+}
+
+/* Formularios */
+form {
+    margin-bottom: 20px;
+}
+
+/* Animación al cargar elementos */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.comment-box {
+    animation: fadeIn 1s ease;
+}
+
+/* Fondo de video */
+#background-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1; /* Envía el video detrás del contenido */
+    opacity: 0.7; /* Ajusta la transparencia si lo deseas */
+}
+
+/* Estilo del cuerpo */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+
+    /* Centrar todo el contenido */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* Asegura que ocupa toda la pantalla */
+}
+
+/* Contenedor principal */
+main {
+    position: relative;
+    z-index: 1;
+    background-color: rgba(255, 255, 255, 0.9); /* Fondo semitransparente */
+    border-radius: 10px;
+    padding: 30px;
+    width: 90%; /* Ancho relativo */
+    max-width: 800px; /* Limitar el ancho máximo */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Centrar el texto */
+}
+
+/* Botones estilizados */
+.styled-button, .logout-button {
+    background-color: #ff9800; /* Color naranja */
+    border: none;
+    border-radius: 25px; /* Bordes redondeados */
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: auto; /* Evitar que sea demasiado amplio */
+}
+
+.styled-button:hover, .logout-button:hover {
+    background-color: #e65100; /* Naranja más oscuro en hover */
+    transform: scale(1.05); /* Ligeramente agrandar */
+}
+
+/* Inputs estilizados */
+input[type="text"],
+input[type="password"],
+textarea {
+    width: 90%; /* Limita el ancho relativo */
+    max-width: 700px; /* Limita el ancho máximo */
+    padding: 15px; /* Espaciado interno */
+    margin: 10px auto; /* Asegura un espaciado uniforme */
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 16px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Comentarios */
+.comment-box {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin: 15px auto;
+    max-width: 700px; /* Limita el tamaño */
+    transition: transform 0.3s ease;
+}
+
+.comment-box:hover {
+    transform: translateY(-5px); /* Ligeramente elevar */
+}
+
+/* Títulos */
+h1, h2 {
+    font-size: 28px;
+    color: #e65100;
+    margin-bottom: 20px;
+}
+
+/* Texto descriptivo */
+p {
+    font-size: 16px;
+    color: #555;
+}
+
+/* Link estilizado */
+a {
+    color: #ff9800;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+.logo {
+    position: fixed; /* Posición fija para que siempre esté visible */
+    bottom: 10px; /* Ajusta para colocarlo en la esquina inferior */
+    left: 10px; /* Ajusta para colocarlo en la esquina izquierda */
+    width: 100px; /* Tamaño del logo */
+    height: auto; /* Mantiene la proporción del logo */
+    z-index: 2; /* Asegura que esté encima del video y otros elementos */
+}

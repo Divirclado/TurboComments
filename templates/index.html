@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Página Principal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Video de fondo -->
+    <video autoplay muted loop id="background-video">
+        <source src="/static/videos/tu-video.mp4" type="video/mp4">
+        Tu navegador no soporta la reproducción de videos.
+    </video>
+
+    <!-- Logo en la esquina -->
+    <img src="/static/images/tu-logo.png" alt="Logo" class="logo">
+
+    <main>
+        <!-- GIF justo encima del mensaje de bienvenida -->
+        <img src="/static/images/tu-gif.gif" alt="GIF animado" style="width: 600px; display: block; margin: 0 auto;">
+
+        <h1>¡Bienvenido, {{ username }}!</h1>
+        <a href="{{ url_for('logout') }}" class="logout-button"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+
+        <form method="POST" enctype="multipart/form-data">
+            <textarea name="comment" placeholder="Escribe tu comentario aquí..." rows="4" required></textarea><br>
+            <input type="file" name="file"><br>
+            <button type="submit" class="styled-button"><i class="fas fa-paper-plane"></i> Enviar</button>
+        </form>
+
+        <h2>Comentarios</h2>
+        <div>
+            {% for comment in comments %}
+                <div class="comment-box">
+                    <p><strong>{{ comment[4] }}:</strong> {{ comment[1] }}</p>
+
+                    <!-- Mostrar archivos multimedia -->
+                    {% if comment[2] %}
+                        {% if comment[2].endswith('.mp4') or comment[2].endswith('.webm') or comment[2].endswith('.ogg') %}
+                            <video controls style="width: 100%; border-radius: 10px;">
+                                <source src="/{{ comment[2] }}" type="video/{{ comment[2].split('.')[-1] }}">
+                                Tu navegador no soporta este video.
+                            </video>
+                        {% elif comment[2].endswith('.png') or comment[2].endswith('.jpg') or comment[2].endswith('.jpeg') or comment[2].endswith('.gif') %}
+                            <img src="/{{ comment[2] }}" style="width: 100%; border-radius: 10px;" alt="Imagen subida">
+                        {% elif comment[2].endswith('.pdf') %}
+                            <embed src="/{{ comment[2] }}" type="application/pdf" width="100%" height="500px">
+                        {% else %}
+                            <a href="/{{ comment[2] }}" target="_blank">Abrir archivo: {{ comment[2].split('/')[-1] }}</a>
+                        {% endif %}
+                    {% endif %}
+
+                    <p>Likes: {{ comment[3] }}</p>
+                    <form method="POST" style="display: inline;">
+                        <button class="styled-button" name="like" value="{{ comment[0] }}"><i class="fas fa-thumbs-up"></i> Like</button>
+                    </form>
+                    {% if comment[5] == session['user_id'] %}
+                        <form method="POST" style="display: inline;">
+                            <button class="styled-button" name="delete" value="{{ comment[0] }}"><i class="fas fa-trash"></i> Eliminar</button>
+                        </form>
+                    {% endif %}
+                    <form method="POST" style="margin-top: 10px;">
+                        <textarea name="reply" placeholder="Escribe tu respuesta aquí..." rows="2" style="width: 100%;"></textarea>
+                        <input type="hidden" name="comment_id" value="{{ comment[0] }}">
+                        <button class="styled-button" type="submit"><i class="fas fa-reply"></i> Responder</button>
+                    </form>
+                    <div style="margin-left: 20px; margin-top: 10px;">
+                        <h4>Respuestas:</h4>
+                        {% for reply in replies %}
+                            {% if reply[0] == comment[0] %}
+                                <p><strong>{{ reply[2] }}:</strong> {{ reply[1] }}</p>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+</html>

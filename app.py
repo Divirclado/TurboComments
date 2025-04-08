@@ -7,8 +7,7 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'pdf', 'ppt', 'pptx', 'doc', 'docx'}
-# Base de datos persistente en /var/data
-app.config['DATABASE'] = '/var/data/comments.db'
+app.config['DATABASE'] = '/var/data/comments.db'  # Ruta persistente en Render
 
 # Función para conectar a la base de datos
 def get_db():
@@ -63,8 +62,7 @@ def create_likes_table():
         ''')
         print("Tabla 'likes' creada (si no existía).")
 
-# Crear la carpeta persistente y las tablas necesarias
-os.makedirs("/var/data", exist_ok=True)
+# Crear tablas necesarias al iniciar la app
 create_tables()
 create_likes_table()
 

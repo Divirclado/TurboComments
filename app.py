@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g
+from flask import Flask, render_template, request, redirect, url_for, session, g, send_from_directory
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,8 +6,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['DATABASE'] = 'comments.db'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'pdf', 'ppt', 'pptx', 'doc', 'docx'}
+# Base de datos persistente en /var/data
+app.config['DATABASE'] = '/var/data/comments.db'
 
 # Función para conectar a la base de datos
 def get_db():
@@ -62,7 +63,8 @@ def create_likes_table():
         ''')
         print("Tabla 'likes' creada (si no existía).")
 
-# Llamar a las funciones para crear las tablas necesarias
+# Crear la carpeta persistente y las tablas necesarias
+os.makedirs("/var/data", exist_ok=True)
 create_tables()
 create_likes_table()
 
@@ -119,10 +121,8 @@ def index():
             comment_id = request.form.get('like')
             with get_db() as conn:
                 try:
-                    # Insertar el like en la tabla likes
                     conn.execute('INSERT INTO likes (user_id, comment_id) VALUES (?, ?)', 
                                  (session['user_id'], comment_id))
-                    # Incrementar el contador de likes
                     conn.execute('UPDATE comments SET likes = likes + 1 WHERE id = ?', (comment_id,))
                 except sqlite3.IntegrityError:
                     return "Ya diste like a este comentario.", 403
@@ -141,7 +141,6 @@ def index():
                 conn.execute('INSERT INTO replies (comment_id, text, user_id) VALUES (?, ?, ?)',
                              (comment_id, reply, session['user_id']))
 
-    # Recuperar comentarios y respuestas
     with get_db() as conn:
         comments = conn.execute('''
             SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username, comments.user_id
@@ -155,6 +154,11 @@ def index():
         ''').fetchall()
 
     return render_template('index.html', comments=comments, replies=replies, username=session['username'])
+
+# Ruta para descargar la base de datos
+@app.route('/download-db')
+def download_db():
+    return send_from_directory('/var/data', 'comments.db', as_attachment=True)
 
 @app.teardown_appcontext
 def close_connection(exception):

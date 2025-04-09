@@ -1,86 +1,83 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g, send_from_directory
-import os
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session
+import psycopg2
+from psycopg2.extras import DictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'pdf', 'ppt', 'pptx', 'doc', 'docx'}
-app.config['DATABASE'] = '/opt/render/project/.data/comments.db'  # Ruta persistente garantizada por Render
 
-# Verifica y crea el archivo de base de datos si no existe
-def init_db():
-    if not os.path.exists('/opt/render/project/.data'):
-        os.makedirs('/opt/render/project/.data')  # Asegura que la carpeta exista
-    if not os.path.exists(app.config['DATABASE']):
-        with sqlite3.connect(app.config['DATABASE']) as conn:
-            conn.execute('''
+# URL de conexión PostgreSQL proporcionada por Render
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgres://usuario:contraseña@servidor:puerto/nombre_base')
+
+# Conectar a la base de datos
+def get_db():
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=DictCursor)
+    return conn
+
+# Crear tablas en PostgreSQL
+def create_tables():
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE,
-                    password TEXT
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL
                 )
             ''')
-            conn.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS comments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    text TEXT,
+                    id SERIAL PRIMARY KEY,
+                    text TEXT NOT NULL,
                     file_path TEXT,
                     likes INTEGER DEFAULT 0,
-                    user_id INTEGER,
+                    user_id INTEGER NOT NULL,
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
-            conn.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS replies (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    comment_id INTEGER,
-                    text TEXT,
-                    user_id INTEGER,
+                    id SERIAL PRIMARY KEY,
+                    comment_id INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
                     FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
-            conn.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS likes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    comment_id INTEGER,
-                    UNIQUE(user_id, comment_id), -- Evita que un usuario dé más de un like a un comentario
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    comment_id INTEGER NOT NULL,
+                    UNIQUE(user_id, comment_id),
                     FOREIGN KEY (user_id) REFERENCES users(id),
                     FOREIGN KEY (comment_id) REFERENCES comments(id)
                 )
             ''')
-            print("Base de datos creada exitosamente.")
+            conn.commit()
+            print("Tablas creadas exitosamente.")
 
-# Conexión a la base de datos
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(app.config['DATABASE'])
-    return db
+# Inicializar la base de datos al inicio
+create_tables()
 
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
-
-# Inicializar la base de datos al inicio de la aplicación
-init_db()
-
+# Rutas de registro, login, index, etc.
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = generate_password_hash(request.form['password'])
         with get_db() as conn:
-            try:
-                conn.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
-                return redirect(url_for('login'))
-            except sqlite3.IntegrityError:
-                return "El nombre de usuario ya existe."
+            with conn.cursor() as cursor:
+                try:
+                    cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (username, password))
+                    conn.commit()
+                    return redirect(url_for('login'))
+                except psycopg2.IntegrityError:
+                    return "El nombre de usuario ya existe."
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -89,13 +86,15 @@ def login():
         username = request.form['username']
         password = request.form['password']
         with get_db() as conn:
-            user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-            if user and check_password_hash(user[2], password):
-                session['user_id'] = user[0]
-                session['username'] = user[1]
-                return redirect(url_for('index'))
-            else:
-                return "Usuario o contraseña incorrectos."
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
+                user = cursor.fetchone()
+                if user and check_password_hash(user['password'], password):
+                    session['user_id'] = user['id']
+                    session['username'] = user['username']
+                    return redirect(url_for('index'))
+                else:
+                    return "Usuario o contraseña incorrectos."
     return render_template('login.html')
 
 @app.route('/logout')
@@ -109,57 +108,19 @@ def index():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        if 'comment' in request.form:  # Añadir un comentario
-            comment = request.form.get('comment')
-            file = request.files.get('file')
-            file_path = None
-            if file and '.' in file.filename:
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-                file.save(file_path)
-            with get_db() as conn:
-                conn.execute('INSERT INTO comments (text, file_path, user_id) VALUES (?, ?, ?)',
-                             (comment, file_path, session['user_id']))
-        elif 'like' in request.form:  # Dar like
-            comment_id = request.form.get('like')
-            with get_db() as conn:
-                try:
-                    conn.execute('INSERT INTO likes (user_id, comment_id) VALUES (?, ?)', 
-                                 (session['user_id'], comment_id))
-                    conn.execute('UPDATE comments SET likes = likes + 1 WHERE id = ?', (comment_id,))
-                except sqlite3.IntegrityError:
-                    return "Ya diste like a este comentario.", 403
-        elif 'delete' in request.form:  # Eliminar comentario
-            comment_id = request.form.get('delete')
-            with get_db() as conn:
-                comment = conn.execute('SELECT user_id FROM comments WHERE id = ?', (comment_id,)).fetchone()
-                if comment and comment[0] == session['user_id']:
-                    conn.execute('DELETE FROM comments WHERE id = ?', (comment_id,))
-                else:
-                    return "No puedes eliminar este comentario, no te pertenece.", 403
-        elif 'reply' in request.form:  # Responder comentario
-            reply = request.form.get('reply')
-            comment_id = request.form.get('comment_id')
-            with get_db() as conn:
-                conn.execute('INSERT INTO replies (comment_id, text, user_id) VALUES (?, ?, ?)',
-                             (comment_id, reply, session['user_id']))
+        # Lógica para comentarios, likes, etc.
+        pass
 
+    # Recuperar comentarios y respuestas
     with get_db() as conn:
-        comments = conn.execute('''
-            SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username, comments.user_id
-            FROM comments
-            JOIN users ON comments.user_id = users.id
-        ''').fetchall()
-        replies = conn.execute('''
-            SELECT replies.comment_id, replies.text, users.username
-            FROM replies
-            JOIN users ON replies.user_id = users.id
-        ''').fetchall()
-
-    return render_template('index.html', comments=comments, replies=replies, username=session['username'])
-
-@app.route('/download-db')
-def download_db():
-    return send_from_directory('/opt/render/project/.data', 'comments.db', as_attachment=True)
+        with conn.cursor() as cursor:
+            cursor.execute('''
+                SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username
+                FROM comments
+                JOIN users ON comments.user_id = users.id
+            ''')
+            comments = cursor.fetchall()
+    return render_template('index.html', comments=comments, username=session['username'])
 
 if __name__ == '__main__':
     app.run(debug=True)

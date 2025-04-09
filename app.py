@@ -9,15 +9,15 @@ app.secret_key = "supersecretkey"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'pdf', 'ppt', 'pptx', 'doc', 'docx'}
 
-# URL de conexión PostgreSQL proporcionada por Render
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgres://usuario:contraseña@servidor:puerto/nombre_base')
+# Obtén la URL de conexión a PostgreSQL desde la variable de entorno
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-# Conectar a la base de datos
+# Función para conectarse a la base de datos PostgreSQL
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=DictCursor)
     return conn
 
-# Crear tablas en PostgreSQL
+# Crear tablas en PostgreSQL si no existen
 def create_tables():
     with get_db() as conn:
         with conn.cursor() as cursor:
@@ -61,10 +61,9 @@ def create_tables():
             conn.commit()
             print("Tablas creadas exitosamente.")
 
-# Inicializar la base de datos al inicio
+# Inicializar la base de datos al inicio de la aplicación
 create_tables()
 
-# Rutas de registro, login, index, etc.
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -108,10 +107,30 @@ def index():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        # Lógica para comentarios, likes, etc.
-        pass
+        if 'comment' in request.form:
+            comment = request.form.get('comment')
+            file = request.files.get('file')
+            file_path = None
+            if file and '.' in file.filename:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+                file.save(file_path)
+            with get_db() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute('INSERT INTO comments (text, file_path, user_id) VALUES (%s, %s, %s)',
+                                   (comment, file_path, session['user_id']))
+                    conn.commit()
+        elif 'like' in request.form:
+            comment_id = request.form.get('like')
+            with get_db() as conn:
+                with conn.cursor() as cursor:
+                    try:
+                        cursor.execute('INSERT INTO likes (user_id, comment_id) VALUES (%s, %s)', 
+                                       (session['user_id'], comment_id))
+                        cursor.execute('UPDATE comments SET likes = likes + 1 WHERE id = %s', (comment_id,))
+                        conn.commit()
+                    except psycopg2.IntegrityError:
+                        return "Ya diste like a este comentario.", 403
 
-    # Recuperar comentarios y respuestas
     with get_db() as conn:
         with conn.cursor() as cursor:
             cursor.execute('''

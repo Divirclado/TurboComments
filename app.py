@@ -26,7 +26,7 @@ def get_db():
         conn = psycopg2.connect(
             DATABASE_URL,
             sslmode='require',
-            sslcompression=True
+            cursor_factory=DictCursor  # Usamos DictCursor para resultados como diccionarios
         )
         return conn
     except psycopg2.Error as e:
@@ -108,7 +108,7 @@ def login():
             with conn.cursor() as cursor:
                 cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
                 user = cursor.fetchone()
-                if user and check_password_hash(user['password'], password):
+                if user and check_password_hash(user['password'], password):  # Ahora user es un diccionario
                     session['user_id'] = user['id']
                     session['username'] = user['username']
                     return redirect(url_for('index'))

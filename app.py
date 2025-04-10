@@ -3,6 +3,10 @@ import psycopg2
 from psycopg2.extras import DictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+from dotenv import load_dotenv  # Librería para cargar el archivo .env
+
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -12,10 +16,22 @@ app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 
 # Obtén la URL de conexión a PostgreSQL desde la variable de entorno
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+if not DATABASE_URL:
+    print("Error: DATABASE_URL no se encontró en las variables de entorno. Revisa tu archivo .env.")
+    exit()
+
 # Función para conectarse a la base de datos PostgreSQL
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=DictCursor)
-    return conn
+    try:
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            sslmode='require',
+            sslcompression=True
+        )
+        return conn
+    except psycopg2.Error as e:
+        print(f"Error al conectar a la base de datos: {e}")
+        raise
 
 # Crear tablas en PostgreSQL si no existen
 def create_tables():
@@ -62,7 +78,11 @@ def create_tables():
             print("Tablas creadas exitosamente.")
 
 # Inicializar la base de datos al inicio de la aplicación
-create_tables()
+try:
+    create_tables()
+except Exception as e:
+    print(f"No se pudieron crear las tablas: {e}")
+    exit()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():

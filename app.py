@@ -3,7 +3,7 @@ import psycopg2
 from psycopg2.extras import DictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
-from dotenv import load_dotenv  # Librería para cargar el archivo .env
+from dotenv import load_dotenv
 
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
@@ -26,7 +26,7 @@ def get_db():
         conn = psycopg2.connect(
             DATABASE_URL,
             sslmode='require',
-            cursor_factory=DictCursor  # Usamos DictCursor para resultados como diccionarios
+            cursor_factory=DictCursor
         )
         return conn
     except psycopg2.Error as e:
@@ -108,7 +108,7 @@ def login():
             with conn.cursor() as cursor:
                 cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
                 user = cursor.fetchone()
-                if user and check_password_hash(user['password'], password):  # Ahora user es un diccionario
+                if user and check_password_hash(user['password'], password):
                     session['user_id'] = user['id']
                     session['username'] = user['username']
                     return redirect(url_for('index'))
@@ -150,11 +150,18 @@ def index():
                         conn.commit()
                     except psycopg2.IntegrityError:
                         return "Ya diste like a este comentario.", 403
+        elif 'delete' in request.form:
+            comment_id = request.form.get('delete')
+            with get_db() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute('DELETE FROM comments WHERE id = %s AND user_id = %s',
+                                   (comment_id, session['user_id']))
+                    conn.commit()
 
     with get_db() as conn:
         with conn.cursor() as cursor:
             cursor.execute('''
-                SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username
+                SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username, comments.user_id
                 FROM comments
                 JOIN users ON comments.user_id = users.id
             ''')

@@ -72,7 +72,7 @@ def create_tables():
                     comment_id INTEGER NOT NULL,
                     UNIQUE(user_id, comment_id),
                     FOREIGN KEY (user_id) REFERENCES users(id),
-                    FOREIGN KEY (comment_id) REFERENCES comments(id)
+                    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
                 )
             ''')
             conn.commit()
@@ -155,8 +155,12 @@ def index():
             comment_id = request.form.get('delete')
             with get_db() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute('DELETE FROM comments WHERE id = %s AND user_id = %s',
-                                   (comment_id, session['user_id']))
+                    # Eliminar referencias en la tabla 'likes'
+                    cursor.execute('DELETE FROM likes WHERE comment_id = %s', (comment_id,))
+                    conn.commit()
+
+                    # Luego elimina el comentario
+                    cursor.execute('DELETE FROM comments WHERE id = %s AND user_id = %s', (comment_id, session['user_id']))
                     conn.commit()
         elif 'reply' in request.form:
             reply_text = request.form.get('reply')

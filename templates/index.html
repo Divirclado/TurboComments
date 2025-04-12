@@ -24,58 +24,110 @@
         <a href="{{ url_for('logout') }}" class="logout-button"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
 
         <form method="POST" enctype="multipart/form-data">
+            <!-- Cuadro de texto -->
             <textarea name="comment" placeholder="Escribe tu comentario aquí..." rows="4" required></textarea><br>
-            <input type="file" name="file"><br>
+            
+            <!-- Texto "Selecciona tu archivo" -->
+            <p style="margin-top: 5px; margin-bottom: 5px; font-size: 21px; color: #ff8800;">Selecciona tu archivo</p>
+        
+            <!-- Botón para elegir archivo -->
+            <input type="file" name="file" id="fileInput" onchange="toggleDiscardButton()"><br>
+        
+            <!-- Botón para descartar archivo (oculto inicialmente) -->
+            <button type="button" id="discardButton" class="styled-button discard-btn" onclick="discardFile()" style="display: none;">Descartar archivo</button><br>
+        
+            <!-- Botón de enviar -->
             <button type="submit" class="styled-button"><i class="fas fa-paper-plane"></i> Enviar</button>
         </form>
 
         <h2>Comentarios</h2>
         <div>
             {% for comment in comments %}
-                <div class="comment-box">
-                    <p><strong>{{ comment[4] }}:</strong> {{ comment[1] }}</p>
+            <div class="comment-box">
+                <p><strong>{{ comment[4] }}:</strong> {{ comment[1] }}</p>
+                
+                <!-- Mostrar la fecha de publicación -->
+                <p style="font-size: 16px; color:rgb(255, 4, 4)8;">Publicado el: {{ comment[6].strftime('%d/%m/%Y %H:%M') }}</p>
 
+                {% if comment[2] %}
                     <!-- Mostrar archivos multimedia -->
-                    {% if comment[2] %}
-                        {% if comment[2].endswith('.mp4') or comment[2].endswith('.webm') or comment[2].endswith('.ogg') %}
-                            <video controls style="width: 100%; border-radius: 10px;">
-                                <source src="/{{ comment[2] }}" type="video/{{ comment[2].split('.')[-1] }}">
-                                Tu navegador no soporta este video.
-                            </video>
-                        {% elif comment[2].endswith('.png') or comment[2].endswith('.jpg') or comment[2].endswith('.jpeg') or comment[2].endswith('.gif') %}
-                            <img src="/{{ comment[2] }}" style="width: 100%; border-radius: 10px;" alt="Imagen subida">
-                        {% elif comment[2].endswith('.pdf') %}
-                            <embed src="/{{ comment[2] }}" type="application/pdf" width="100%" height="500px">
-                        {% else %}
-                            <a href="/{{ comment[2] }}" target="_blank">Abrir archivo: {{ comment[2].split('/')[-1] }}</a>
-                        {% endif %}
+                    {% if comment[2].endswith('.mp4') or comment[2].endswith('.webm') or comment[2].endswith('.ogg') %}
+                    <video controls style="width: 100%; border-radius: 10px;">
+                        <source src="/{{ comment[2] }}" type="video/{{ comment[2].split('.')[-1] }}">
+                    </video>
+                    {% elif comment[2].endswith('.png') or comment[2].endswith('.jpg') or comment[2].endswith('.jpeg') or comment[2].endswith('.gif') %}
+                    <img src="/{{ comment[2] }}" style="width: 100%; border-radius: 10px;" alt="Imagen subida">
+                    {% elif comment[2].endswith('.pdf') %}
+                    <embed src="/{{ comment[2] }}" type="application/pdf" width="100%" height="500px">
+                    {% else %}
+                    <a href="/{{ comment[2] }}" target="_blank">Abrir archivo</a>
                     {% endif %}
+                {% endif %}
 
-                    <p>Likes: {{ comment[3] }}</p>
-                    <form method="POST" style="display: inline;">
-                        <button class="styled-button" name="like" value="{{ comment[0] }}"><i class="fas fa-thumbs-up"></i> Like</button>
-                    </form>
-                    {% if comment[5] == session['user_id'] %}
-                        <form method="POST" style="display: inline;">
-                            <button class="styled-button" name="delete" value="{{ comment[0] }}"><i class="fas fa-trash"></i> Eliminar</button>
-                        </form>
-                    {% endif %}
-                    <form method="POST" style="margin-top: 10px;">
+                <p>Likes: {{ comment[3] }}</p>
+                <form method="POST" style="display: inline;">
+                    <button class="styled-button" name="like" value="{{ comment[0] }}"><i class="fas fa-thumbs-up"></i> Like</button>
+                </form>
+                {% if comment[5] == session['user_id'] %}
+                <form method="POST" style="display: inline;">
+                    <button class="styled-button" name="delete" value="{{ comment[0] }}"><i class="fas fa-trash"></i> Eliminar</button>
+                </form>
+                {% endif %}
+
+                <!-- Botón de Responder -->
+                <button class="styled-button reply-btn" onclick="toggleReply('{{ comment[0] }}')"><i class="fas fa-reply"></i> Responder</button>
+
+                <!-- Formulario de respuesta, inicialmente oculto -->
+                <div id="reply-box-{{ comment[0] }}" class="reply-box" style="display: none;">
+                    <form method="POST">
                         <textarea name="reply" placeholder="Escribe tu respuesta aquí..." rows="2" style="width: 100%;"></textarea>
                         <input type="hidden" name="comment_id" value="{{ comment[0] }}">
-                        <button class="styled-button" type="submit"><i class="fas fa-reply"></i> Responder</button>
+                        <button class="styled-button" type="submit">Enviar Respuesta</button>
                     </form>
-                    <div style="margin-left: 20px; margin-top: 10px;">
-                        <h4>Respuestas:</h4>
-                        {% for reply in replies %}
-                            {% if reply[0] == comment[0] %}
-                                <p><strong>{{ reply[2] }}:</strong> {{ reply[1] }}</p>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
                 </div>
+
+                <!-- Mostrar respuestas -->
+                <div style="margin-left: 20px; margin-top: 10px;">
+                    <h4>Respuestas:</h4>
+                    {% for reply in replies %}
+                        {% if reply[0] == comment[0] %}
+                        <p><strong>{{ reply[2] }}:</strong> {{ reply[1] }}</p>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
             {% endfor %}
         </div>
     </main>
+
+    <script>
+        function toggleReply(commentId) {
+            const replyBox = document.getElementById(`reply-box-${commentId}`);
+            if (replyBox.style.display === "none") {
+                replyBox.style.display = "block";
+            } else {
+                replyBox.style.display = "none";
+            }
+        }
+
+        function toggleDiscardButton() {
+            const fileInput = document.getElementById('fileInput');
+            const discardButton = document.getElementById('discardButton');
+            if (fileInput.value) {
+                // Mostrar el botón si hay un archivo seleccionado
+                discardButton.style.display = "block";
+            } else {
+                // Ocultar el botón si no hay archivo seleccionado
+                discardButton.style.display = "none";
+            }
+        }
+    
+        function discardFile() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.value = ""; // Limpia el archivo seleccionado
+            toggleDiscardButton(); // Oculta el botón al descartar el archivo
+            alert("Archivo descartado"); // Opcional: Muestra un mensaje de confirmación
+        }
+    </script>
 </body>
 </html>

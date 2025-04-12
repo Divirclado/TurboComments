@@ -51,6 +51,7 @@ def create_tables():
                     file_path TEXT,
                     likes INTEGER DEFAULT 0,
                     user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             ''')
@@ -157,16 +158,32 @@ def index():
                     cursor.execute('DELETE FROM comments WHERE id = %s AND user_id = %s',
                                    (comment_id, session['user_id']))
                     conn.commit()
+        elif 'reply' in request.form:
+            reply_text = request.form.get('reply')
+            comment_id = request.form.get('comment_id')
+            with get_db() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute('INSERT INTO replies (comment_id, text, user_id) VALUES (%s, %s, %s)',
+                                   (comment_id, reply_text, session['user_id']))
+                    conn.commit()
 
     with get_db() as conn:
         with conn.cursor() as cursor:
             cursor.execute('''
-                SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username, comments.user_id
+                SELECT comments.id, comments.text, comments.file_path, comments.likes, users.username, comments.user_id, comments.created_at
                 FROM comments
                 JOIN users ON comments.user_id = users.id
             ''')
             comments = cursor.fetchall()
-    return render_template('index.html', comments=comments, username=session['username'])
+
+            cursor.execute('''
+                SELECT replies.comment_id, replies.text, users.username
+                FROM replies
+                JOIN users ON replies.user_id = users.id
+            ''')
+            replies = cursor.fetchall()
+
+    return render_template('index.html', comments=comments, replies=replies, username=session['username'])
 
 if __name__ == '__main__':
     app.run(debug=True)
